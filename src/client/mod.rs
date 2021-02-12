@@ -66,6 +66,8 @@ use xor_name::XorName;
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub struct MsgEnvelope {
+    /// Section PK of the target section.
+    pub target_section_pk: PublicKey,
     /// The actual message payload
     pub message: Message,
     /// The source of the message.
@@ -112,6 +114,10 @@ impl MsgEnvelope {
 
         let sender = self.most_recent_sender();
         Ok(sender.verify(&data))
+    }
+
+    pub fn target_section_pk(&self) -> PublicKey {
+        self.target_section_pk
     }
 
     /// The proxy would first sign the MsgEnvelope,
@@ -717,6 +723,7 @@ mod tests {
         };
 
         let msg_envelope = MsgEnvelope {
+            target_section_pk: pk,
             message,
             origin: MsgSender::client(pk, signature)?,
             proxies: vec![],
