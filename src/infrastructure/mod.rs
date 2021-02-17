@@ -37,6 +37,7 @@ pub struct InfrastructureInformation {
     /// Section elders.
     pub elders: BTreeMap<XorName, SocketAddr>,
 }
+
 // Infrastructure error wrapper to add correltion info for triggering message
 #[derive(Debug, Serialize, Deserialize, Hash, PartialEq, PartialOrd, Ord, Eq, Clone)]
 pub struct ErrorResponse {
@@ -73,7 +74,7 @@ impl Message {
         }
     }
 
-    /// serialize this Query into bytes ready to be sent over the wire.
+    /// Serialize this Query into bytes ready to be sent over the wire.
     pub fn serialize(&self) -> crate::Result<Bytes> {
         WireMsg::serialize_infrastructure_msg(self)
     }

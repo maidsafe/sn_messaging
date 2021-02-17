@@ -1,0 +1,202 @@
+// Copyright 2020 MaidSafe.net limited.
+//
+// This SAFE Network Software is licensed to you under The General Public License (GPL), version 3.
+// Unless required by applicable law or agreed to in writing, the SAFE Network Software distributed
+// under the GPL Licence is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied. Please review the Licences for the specific language governing
+// permissions and limitations relating to use of the SAFE Network Software.
+
+use super::{AccumulationError, Proof, ProofShare, Proven, SignatureAggregator};
+use crate::{
+    node::Result,
+    node::{
+        section::{EldersInfo, MemberInfo, SectionProofChain},
+        PlainMessage,
+    },
+};
+use serde::{Deserialize, Serialize, Serializer};
+use threshold_crypto::{PublicKey, PublicKeySet, SecretKeyShare};
+use xor_name::{Prefix, XorName};
+
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[allow(clippy::large_enum_variant)]
+pub enum Vote {
+    /// Voted for node that is about to join our section
+    Online {
+        member_info: MemberInfo,
+        /// Previous name if relocated.
+        previous_name: Option<XorName>,
+        /// The key of the destination section that the joining node knows, if any.
+        their_knowledge: Option<PublicKey>,
+    },
+
+    /// Voted for node we no longer consider online.
+    Offline(MemberInfo),
+
+    // Voted to update the elders info of a section.
+    SectionInfo(EldersInfo),
+
+    // Voted to update the elders in our section.
+    // NOTE: the `EldersInfo` is already signed with the new key. This vote is only to signs the
+    // new key with the current key. That way, when it accumulates, we obtain all the following
+    // pieces of information at the same time:
+    //   1. the new elders info
+    //   2. the new key
+    //   3. the signature of the new elders info using the new key
+    //   4. the signature of the new key using the current key
+    // Which we can use to update the section elders info and the section chain at the same time as
+    // a single atomic operation without needing to cache anything.
+    OurElders(Proven<EldersInfo>),
+
+    // Voted to update their section key.
+    TheirKey {
+        prefix: Prefix,
+        key: PublicKey,
+    },
+
+    // Voted to update their knowledge of our section.
+    TheirKnowledge {
+        prefix: Prefix,
+        key_index: u64,
+    },
+
+    // Voted to send an user message whose source is our section.
+    SendMessage {
+        message: Box<PlainMessage>,
+        proof_chain: SectionProofChain,
+    },
+
+    // Voted to concensus whether new node shall be allowed to join
+    JoinsAllowed(bool),
+}
+
+impl Vote {
+    /// Create ProofShare for this vote.
+    pub fn prove(
+        &self,
+        public_key_set: PublicKeySet,
+        index: usize,
+        secret_key_share: &SecretKeyShare,
+    ) -> Result<ProofShare> {
+        Ok(ProofShare::new(
+            public_key_set,
+            index,
+            secret_key_share,
+            &bincode::serialize(&SignableView(self))?,
+        ))
+    }
+
+    #[cfg(test)]
+    pub fn as_signable(&self) -> SignableView {
+        SignableView(self)
+    }
+}
+
+// View of a `Vote` that can be serialized for the purpose of signing.
+pub struct SignableView<'a>(&'a Vote);
+
+impl<'a> Serialize for SignableView<'a> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self.0 {
+            Vote::Online { member_info, .. } => member_info.serialize(serializer),
+            Vote::Offline(member_info) => member_info.serialize(serializer),
+            Vote::SectionInfo(info) => info.serialize(serializer),
+            Vote::OurElders(info) => info.proof.public_key.serialize(serializer),
+            Vote::TheirKey { prefix, key } => (prefix, key).serialize(serializer),
+            Vote::TheirKnowledge { prefix, key_index } => (prefix, key_index).serialize(serializer),
+            Vote::SendMessage { message, .. } => message.as_signable().serialize(serializer),
+            Vote::JoinsAllowed(joins_allowed) => joins_allowed.serialize(serializer),
+        }
+    }
+}
+
+// Accumulator of `Vote`s.
+#[derive(Default)]
+pub struct VoteAccumulator(SignatureAggregator);
+
+impl VoteAccumulator {
+    pub fn add(
+        &mut self,
+        vote: Vote,
+        proof_share: ProofShare,
+    ) -> Result<(Vote, Proof), AccumulationError> {
+        self.0
+            .add(SignableWrapper(vote), proof_share)
+            .map(|(vote, proof)| (vote.0, proof))
+    }
+}
+
+#[derive(Debug)]
+struct SignableWrapper(Vote);
+
+impl Serialize for SignableWrapper {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        SignableView(&self.0).serialize(serializer)
+    }
+}
+/*
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{consensus, section};
+    use anyhow::Result;
+    use rand::Rng;
+    use std::fmt::Debug;
+
+    #[test]
+    fn serialize_for_signing() -> Result<()> {
+        // Vote::SectionInfo
+        let (elders_info, _) = section::test_utils::gen_elders_info(Default::default(), 4);
+        let vote = Vote::SectionInfo(elders_info.clone());
+        verify_serialize_for_signing(&vote, &elders_info);
+
+        // Vote::OurElders
+        let new_sk = SecretKey::random();
+        let new_pk = new_sk.public_key();
+        let proven_elders_info = consensus::test_utils::proven(&new_sk, elders_info)?;
+        let vote = Vote::OurElders(proven_elders_info);
+        verify_serialize_for_signing(&vote, &new_pk);
+
+        // Vote::TheirKey
+        let prefix = gen_prefix();
+        let key = SecretKey::random().public_key();
+        let vote = Vote::TheirKey { prefix, key };
+        verify_serialize_for_signing(&vote, &(prefix, key));
+
+        // Vote::TheirKnowledge
+        let prefix = gen_prefix();
+        let key_index = rand::random();
+        let vote = Vote::TheirKnowledge { prefix, key_index };
+        verify_serialize_for_signing(&vote, &(prefix, key_index));
+
+        Ok(())
+    }
+
+    // Verify that `SignableView(vote)` serializes the same as `should_serialize_as`.
+    fn verify_serialize_for_signing<T>(vote: &Vote, should_serialize_as: &T)
+    where
+        T: Serialize + Debug,
+    {
+        let actual = bincode::serialize(&SignableView(vote)).unwrap();
+        let expected = bincode::serialize(should_serialize_as).unwrap();
+
+        assert_eq!(
+            actual, expected,
+            "expected SignableView({:?}) to serialize same as {:?}, but didn't",
+            vote, should_serialize_as
+        )
+    }
+
+    fn gen_prefix() -> Prefix {
+        let mut rng = rand::thread_rng();
+        let mut prefix = Prefix::default();
+        let len = rng.gen_range(0, 5);
+
+        for _ in 0..len {
+            prefix = prefix.pushed(rng.gen());
+        }
+
+        prefix
+    }
+}
+*/

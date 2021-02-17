@@ -7,7 +7,6 @@
 // specific language governing permissions and limitations relating to use of the SAFE Network
 // Software.
 
-use crate::client;
 use std::result;
 use thiserror::Error;
 
@@ -18,9 +17,13 @@ pub type Result<T, E = Error> = result::Result<T, E>;
 #[non_exhaustive]
 pub enum Error {
     #[error(transparent)]
-    Client(#[from] client::Error),
+    Client(#[from] crate::client::Error),
 
-    #[error("Failed to serialize message: {0}")]
+    #[cfg(not(feature = "client-only"))]
+    #[error(transparent)]
+    Node(#[from] crate::node::Error),
+
+    #[error("Failed to serialise message: {0}")]
     Serialisation(String),
     /// Failed to parse a string.
     #[error("Failed to parse: {0}")]
