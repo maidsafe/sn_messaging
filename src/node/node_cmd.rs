@@ -8,7 +8,9 @@
 // Software.
 
 use crate::{
-    client::{DataCmd as NodeDataCmd, DataQuery as NodeDataQuery, Error, Result},
+    client::{
+        BlobRead, BlobWrite, DataCmd as NodeDataCmd, DataQuery as NodeDataQuery, Error, Result,
+    },
     EndUser,
 };
 use serde::{Deserialize, Serialize};
@@ -18,8 +20,6 @@ use sn_data_types::{
 };
 use std::collections::BTreeMap;
 use xor_name::XorName;
-
-use super::{BlobRead, BlobWrite};
 
 // -------------- Node Cmds --------------
 
