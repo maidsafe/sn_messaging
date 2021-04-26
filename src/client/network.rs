@@ -13,13 +13,13 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use sn_data_types::{
-    ActorHistory, Blob, BlobAddress, CreditAgreementProof, NodeAge, PublicKey, ReplicaEvent,
+    ActorHistory, Chunk, ChunkAddress, CreditAgreementProof, NodeAge, PublicKey, ReplicaEvent,
     SectionElders, Signature,
 };
 use std::collections::BTreeMap;
 use xor_name::XorName;
 
-use super::{BlobRead, BlobWrite, DataExchange};
+use super::{ChunkRead, ChunkWrite, DataExchange};
 
 // -------------- Node Cmds --------------
 
@@ -30,7 +30,7 @@ pub enum NodeCmd {
     /// Metadata is handled by Elders
     Metadata { cmd: NodeDataCmd, origin: EndUser },
     /// Chunks are handled by Adults
-    Chunks { cmd: BlobWrite, origin: EndUser },
+    Chunks { cmd: ChunkWrite, origin: EndUser },
     /// Transfers are handled by Elders
     Transfers(NodeTransferCmd),
     /// Cmds related to the running of a node.
@@ -51,7 +51,7 @@ pub enum NodeSystemCmd {
         section: XorName,
     },
     /// Replicate a given chunk at an Adult
-    ReplicateChunk(Blob),
+    ReplicateChunk(Chunk),
     /// When new section key, all propose a reward payout.
     ProposeRewardPayout(sn_data_types::RewardProposal),
     /// When proposal has been agreed, they all accumulate the reward payout.
@@ -85,7 +85,7 @@ pub enum NodeEvent {
     /// Replication completed event, emitted by a node, received by elders.
     ReplicationCompleted {
         ///
-        chunk: BlobAddress,
+        chunk: ChunkAddress,
         /// The Elder's accumulated signature
         /// over the chunk address. This is sent back
         /// to them so that any uninformed Elder knows
@@ -105,7 +105,7 @@ pub enum NodeQuery {
         origin: EndUser,
     },
     /// Chunks are handled by Adults
-    Chunks { query: BlobRead, origin: EndUser },
+    Chunks { query: ChunkRead, origin: EndUser },
     /// Rewards handled by Elders
     Rewards(NodeRewardQuery),
     /// Transfers handled by Elders
@@ -141,8 +141,8 @@ pub enum NodeSystemQuery {
     /// network for the new wallet's replicas' public key set
     GetSectionElders,
     /// Acquire the chunk from current holders for replication.
-    /// providing the address of the blob to be replicated.
-    GetChunk(BlobAddress),
+    /// providing the address of the chunk to be replicated.
+    GetChunk(ChunkAddress),
 }
 
 ///
@@ -180,9 +180,9 @@ pub enum NodeTransferQueryResponse {
 #[derive(Debug, Hash, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub enum NodeDataQueryResponse {
     /// Elder to Adult Get.
-    GetChunk(Result<Blob>),
+    GetChunk(Result<Chunk>),
     /// Adult to Adult Get
-    GetChunks(Result<Vec<Blob>>),
+    GetChunks(Result<Vec<Chunk>>),
 }
 
 ///
@@ -201,7 +201,7 @@ pub enum NodeDataError {
     ///
     ChunkReplication {
         ///
-        address: BlobAddress,
+        address: ChunkAddress,
         ///
         error: Error,
     },

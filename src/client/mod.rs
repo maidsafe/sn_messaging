@@ -7,7 +7,7 @@
 // specific language governing permissions and limitations relating to use of the SAFE Network
 // Software.
 
-mod blob;
+mod chunk;
 mod cmd;
 mod data;
 mod data_exchange;
@@ -22,11 +22,11 @@ mod sequence;
 mod transfer;
 
 pub use self::{
-    blob::{BlobRead, BlobWrite},
+    chunk::{ChunkRead, ChunkWrite},
     cmd::Cmd,
     data::{DataCmd, DataQuery},
     data_exchange::{
-        BlobDataExchange, ChunkMetadata, DataExchange, HolderMetadata, MapDataExchange,
+        ChunkDataExchange, ChunkMetadata, DataExchange, HolderMetadata, MapDataExchange,
         SequenceDataExchange,
     },
     duty::{AdultDuties, Duty, ElderDuties, NodeDuties},
@@ -50,7 +50,7 @@ use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use sn_data_types::{
     register::{Entry, EntryHash, Permissions, Policy, Register},
-    ActorHistory, Blob, Map, MapEntries, MapPermissionSet, MapValue, MapValues, PublicKey,
+    ActorHistory, Chunk, Map, MapEntries, MapPermissionSet, MapValue, MapValues, PublicKey,
     Sequence, SequenceEntries, SequenceEntry, SequencePermissions, SequencePrivatePolicy,
     SequencePublicPolicy, Token, TransferAgreementProof, TransferValidated,
 };
@@ -236,10 +236,10 @@ pub enum Event {
 #[derive(Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub enum QueryResponse {
     //
-    // ===== Blob =====
+    // ===== Chunk =====
     //
-    /// Get Blob.
-    GetBlob(Result<Blob>),
+    /// Get Chunk.
+    GetChunk(Result<Chunk>),
     //
     // ===== Map =====
     //
@@ -328,7 +328,7 @@ macro_rules! try_from {
     };
 }
 
-try_from!(Blob, GetBlob);
+try_from!(Chunk, GetChunk);
 try_from!(Map, GetMap, GetMapShell);
 try_from!(u64, GetMapVersion);
 try_from!(MapEntries, ListMapEntries);
@@ -356,8 +356,8 @@ impl fmt::Debug for QueryResponse {
         use QueryResponse::*;
 
         match self {
-            // Blob
-            GetBlob(res) => write!(f, "QueryResponse::GetBlob({:?})", ErrorDebug(res)),
+            // Chunk
+            GetChunk(res) => write!(f, "QueryResponse::GetChunk({:?})", ErrorDebug(res)),
             // Map
             GetMap(res) => write!(f, "QueryResponse::GetMap({:?})", ErrorDebug(res)),
             GetMapShell(res) => write!(f, "QueryResponse::GetMapShell({:?})", ErrorDebug(res)),
@@ -430,7 +430,7 @@ impl fmt::Debug for QueryResponse {
 mod tests {
     use super::*;
     use anyhow::{anyhow, Result};
-    use sn_data_types::{Keypair, PublicBlob, UnseqMap};
+    use sn_data_types::{Keypair, PublicChunk, UnseqMap};
     use std::convert::{TryFrom, TryInto};
 
     fn gen_keypairs() -> Vec<Keypair> {
@@ -470,17 +470,17 @@ mod tests {
             None => return Err(anyhow!("Could not generate public key")),
         };
 
-        let i_data = Blob::Public(PublicBlob::new(vec![1, 3, 1, 4]));
+        let i_data = Chunk::Public(PublicChunk::new(vec![1, 3, 1, 4]));
         let e = Error::AccessDenied(key);
         assert_eq!(
             i_data,
-            GetBlob(Ok(i_data.clone()))
+            GetChunk(Ok(i_data.clone()))
                 .try_into()
                 .map_err(|_| anyhow!("Mismatched types".to_string()))?
         );
         assert_eq!(
             Err(TryFromError::Response(e.clone())),
-            Blob::try_from(GetBlob(Err(e.clone())))
+            Chunk::try_from(GetChunk(Err(e.clone())))
         );
 
         let mut data = BTreeMap::new();

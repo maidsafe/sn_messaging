@@ -8,7 +8,7 @@
 // Software.
 
 use serde::{Deserialize, Serialize};
-use sn_data_types::{BlobAddress, MapAddress, PublicKey, SequenceAddress};
+use sn_data_types::{ChunkAddress, MapAddress, PublicKey, SequenceAddress};
 use std::collections::{BTreeMap, BTreeSet};
 use xor_name::XorName;
 
@@ -20,13 +20,13 @@ pub struct ChunkMetadata {
 
 #[derive(Default, Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct HolderMetadata {
-    pub chunks: BTreeSet<BlobAddress>,
+    pub chunks: BTreeSet<ChunkAddress>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DataExchange {
     ///
-    pub blob_data: BlobDataExchange,
+    pub chunk_data: ChunkDataExchange,
     ///
     pub map_data: MapDataExchange,
     ///
@@ -34,10 +34,10 @@ pub struct DataExchange {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BlobDataExchange {
+pub struct ChunkDataExchange {
     /// Full Adults register
     pub full_adults: BTreeMap<String, String>,
-    /// Blob holders register
+    /// Chunk holders register
     pub holders: BTreeMap<String, HolderMetadata>,
     /// Metadata register
     pub metadata: BTreeMap<String, ChunkMetadata>,

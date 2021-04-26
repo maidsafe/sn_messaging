@@ -9,53 +9,44 @@
 
 use super::{CmdError, Error, QueryResponse};
 use serde::{Deserialize, Serialize};
-use sn_data_types::{Blob, BlobAddress, PublicKey};
+use sn_data_types::{Chunk, ChunkAddress, PublicKey};
 use std::fmt;
 use xor_name::XorName;
 
 /// TODO: docs
 #[derive(Hash, Eq, PartialEq, PartialOrd, Clone, Serialize, Deserialize)]
-pub enum BlobRead {
+pub enum ChunkRead {
     /// TODO: docs
-    Get(BlobAddress),
+    Get(ChunkAddress),
 }
 
 /// TODO: docs
 #[allow(clippy::large_enum_variant)]
 #[derive(Hash, Eq, PartialEq, PartialOrd, Clone, Serialize, Deserialize)]
-pub enum BlobWrite {
+pub enum ChunkWrite {
     /// TODO: docs
-    New(Blob),
+    New(Chunk),
     /// TODO: docs
-    DeletePrivate(BlobAddress),
+    DeletePrivate(ChunkAddress),
 }
 
-impl BlobRead {
-    // /// Get the `Type` of this `Request`.
-    // pub fn get_type(&self) -> Type {
-    //     use BlobRead::*;
-    //     match self {
-    //         Get(BlobAddress::Public(_)) => Type::PublicRead,
-    //         Get(BlobAddress::Private(_)) => Type::PrivateRead,
-    //     }
-    // }
-
+impl ChunkRead {
     /// Creates a Response containing an error, with the Response variant corresponding to the
     /// Request variant.
     pub fn error(&self, error: Error) -> QueryResponse {
-        QueryResponse::GetBlob(Err(error))
+        QueryResponse::GetChunk(Err(error))
     }
 
     /// Returns the address of the destination for `request`.
     pub fn dst_address(&self) -> XorName {
-        use BlobRead::*;
+        use ChunkRead::*;
         match self {
             Get(ref address) => *address.name(),
         }
     }
 }
 
-impl BlobWrite {
+impl ChunkWrite {
     /// Creates a Response containing an error, with the Response variant corresponding to the
     /// Request variant.
     pub fn error(&self, error: Error) -> CmdError {
@@ -64,14 +55,14 @@ impl BlobWrite {
 
     /// Returns the address of the destination for `request`.
     pub fn dst_address(&self) -> XorName {
-        use BlobWrite::*;
+        use ChunkWrite::*;
         match self {
             New(ref data) => *data.name(),
             DeletePrivate(ref address) => *address.name(),
         }
     }
 
-    /// Returns the owner of the data on a New Blob write.
+    /// Returns the owner of the data on a New Chunk write.
     pub fn owner(&self) -> Option<PublicKey> {
         match self {
             Self::New(data) => data.owner().cloned(),
@@ -80,21 +71,21 @@ impl BlobWrite {
     }
 }
 
-impl fmt::Debug for BlobRead {
+impl fmt::Debug for ChunkRead {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        use BlobRead::*;
+        use ChunkRead::*;
         match self {
             Get(req) => write!(formatter, "{:?}", req),
         }
     }
 }
 
-impl fmt::Debug for BlobWrite {
+impl fmt::Debug for ChunkWrite {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        use BlobWrite::*;
+        use ChunkWrite::*;
         match self {
-            New(blob) => write!(formatter, "BlobWrite::New({:?})", blob),
-            DeletePrivate(address) => write!(formatter, "BlobWrite::DeletePrivate({:?})", address),
+            New(chunk) => write!(formatter, "ChunkWrite::New({:?})", chunk),
+            DeletePrivate(address) => write!(formatter, "ChunkWrite::DeletePrivate({:?})", address),
         }
     }
 }
