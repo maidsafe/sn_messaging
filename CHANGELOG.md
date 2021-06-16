@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [37.0.0](https://github.com/maidsafe/sn_messaging/compare/v36.0.1...v37.0.0) (2021-06-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* use MessageId in Proposal::JoinsAllowed to avoid re-votes got
+
+### Bug Fixes
+
+* use MessageId in Proposal::JoinsAllowed to avoid re-votes got ([f2c7f1b](https://github.com/maidsafe/sn_messaging/commit/f2c7f1bebf55a2a5ef28ad2cc5ed30ec607c0ba7))
+
 ### [36.0.1](https://github.com/maidsafe/sn_messaging/compare/v36.0.0...v36.0.1) (2021-06-14)
 
 ## [36.0.0](https://github.com/maidsafe/sn_messaging/compare/v35.0.0...v36.0.0) (2021-06-14)
