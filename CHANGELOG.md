@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [37.1.0](https://github.com/maidsafe/sn_messaging/compare/v37.0.0...v37.1.0) (2021-06-18)
+
+
+### Features
+
+* **joins:** add is_join_request method for WireMsg ([407eafe](https://github.com/maidsafe/sn_messaging/commit/407eafe98b2093472add07fe4c32f1f2645f8691))
+
 ## [37.0.0](https://github.com/maidsafe/sn_messaging/compare/v36.0.1...v37.0.0) (2021-06-16)
 
 
