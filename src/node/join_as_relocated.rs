@@ -42,6 +42,7 @@ impl Debug for JoinAsRelocatedRequest {
 }
 
 /// Response to a request to join a section as relocated
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum JoinAsRelocatedResponse {
     /// Up to date section information for a joining peer to retry its join request with
